@@ -23,3 +23,7 @@ app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   console.log(`Swagger disponível em http://localhost:${PORT}/api-docs`);
 });
+
+const pessoasRoutes = require('./routes/pessoas'); // No topo
+app.use('/pessoas', pessoasRoutes); // Antes do app.listen
+
