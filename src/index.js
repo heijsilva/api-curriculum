@@ -27,3 +27,6 @@ app.listen(PORT, () => {
 const pessoasRoutes = require('./routes/pessoas'); // No topo
 app.use('/pessoas', pessoasRoutes); // Antes do app.listen
 
+const experienciasRoutes = require('./routes/experiencias');
+
+app.use('/experiencias', experienciasRoutes);
