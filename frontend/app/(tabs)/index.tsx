@@ -2,6 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, TouchableOpacity, Share, SafeAreaView, FlatList, Animated } from 'react-native';
 import api from '../../services/api';
 
+declare global {
+  var selectedPessoaId: number;
+}
+
 export default function HomeScreen() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [selectedPessoa, setSelectedPessoa] = useState<any>(null);
@@ -13,15 +17,15 @@ export default function HomeScreen() {
     fadeAnim.setValue(0);
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 400,
       useNativeDriver: true,
-    }).start(); // CORRIGIDO: Removido o .current
+    }).start();
   };
 
   const onShare = async () => {
     try {
       await Share.share({
-        message: `Currículo Profissional - ${selectedPessoa?.nome}: https://api-curriculum.vercel.app/api-docs`,
+        message: `Currículo Profissional de ${selectedPessoa?.nome}: https://api-curriculum.vercel.app/api-docs`,
       });
     } catch (error) { console.log(error); }
   };
@@ -31,7 +35,11 @@ export default function HomeScreen() {
       .then(res => {
         setProfiles(res.data);
         if (res.data.length > 0) {
-          setSelectedPessoa(res.data[0]);
+          // Tenta colocar o Victor Oliveira como primeiro se achar na lista, senão bota o primeiro
+          const victor = res.data.find((p: any) => p.nome.toLowerCase().includes('victor'));
+          const defaultAc = victor || res.data[0];
+          setSelectedPessoa(defaultAc);
+          global.selectedPessoaId = defaultAc.id; // Seta variável global simples
           animateEntry();
         }
         setLoading(false);
@@ -41,53 +49,72 @@ export default function HomeScreen() {
 
   const selectProfile = (pessoa: any) => {
     setSelectedPessoa(pessoa);
+    global.selectedPessoaId = pessoa.id; // Atualiza ID ativo
     animateEntry();
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color="#0047AB" /></View>;
+  if (loading) return <View style={styles.center}><ActivityIndicator size="small" color="#0F172A" /></View>;
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.headerTitle}>Selecione um Perfil</Text>
+      <Text style={styles.sectionHeader}>Profissionais Disponíveis</Text>
       
-      <View style={styles.selectorContainer}>
+      <View style={styles.selectorWrapper}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={profiles}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              onPress={() => selectProfile(item)}
-              style={[styles.profileTab, selectedPessoa?.id === item.id && styles.profileTabActive]}
-            >
-              <Text style={[styles.profileTabText, selectedPessoa?.id === item.id && styles.profileTabTextActive]}>
-                {item.nome.split(' ')[0]}
-              </Text>
-            </TouchableOpacity>
-          )}
+          contentContainerStyle={{ paddingHorizontal: 24 }}
+          renderItem={({ item }) => {
+            const isSelected = selectedPessoa?.id === item.id;
+            return (
+              <TouchableOpacity 
+                onPress={() => selectProfile(item)}
+                style={[styles.pillButton, isSelected && styles.pillButtonActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.pillText, isSelected && styles.pillTextActive]}>
+                  {item.nome.split(' ')[0]}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
         />
       </View>
 
-      <Animated.ScrollView style={{ opacity: fadeAnim }}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLabel}>{selectedPessoa?.nome?.charAt(0)}</Text>
+      <Animated.ScrollView style={{ opacity: fadeAnim }} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.profileSection}>
+          <View style={styles.avatarLarge}>
+            <Text style={styles.avatarLetter}>{selectedPessoa?.nome?.charAt(0)}</Text>
           </View>
-          <Text style={styles.name}>{selectedPessoa?.nome}</Text>
-          <Text style={styles.subtitle}>Desenvolvedor Full Stack</Text>
+          <Text style={styles.fullname}>{selectedPessoa?.nome}</Text>
+          <Text style={styles.headline}>Tecnologia & Dados</Text>
         </View>
 
-        <View style={styles.infoBox}>
-          <Text style={styles.label}>E-MAIL</Text>
-          <Text style={styles.value}>{selectedPessoa?.email}</Text>
-          <View style={styles.spacer} />
-          <Text style={styles.label}>TELEFONE</Text>
-          <Text style={styles.value}>{selectedPessoa?.telefone}</Text>
+        <View style={styles.detailsCard}>
+          <View style={styles.infoBlock}>
+            <Text style={styles.detailLabel}>Email Profissional</Text>
+            <Text style={styles.detailValue}>{selectedPessoa?.email}</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.infoBlock}>
+            <Text style={styles.detailLabel}>Contato Direto</Text>
+            <Text style={styles.detailValue}>{selectedPessoa?.telefone}</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.infoBlock}>
+            <Text style={styles.detailLabel}>Localidade</Text>
+            <Text style={styles.detailValue}>{selectedPessoa?.id === 3 || selectedPessoa?.nome.includes('Victor') ? 'Recife - PE' : 'São Paulo, Brasil'}</Text>
+          </View>
         </View>
 
-        <TouchableOpacity onPress={onShare} style={styles.shareButton} activeOpacity={0.8}>
-          <Text style={styles.shareText}>COMPARTILHAR CURRÍCULO</Text>
+        <TouchableOpacity onPress={onShare} style={styles.actionButton} activeOpacity={0.9}>
+          <Text style={styles.actionButtonText}>COMPARTILHAR PERFIL</Text>
         </TouchableOpacity>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -95,23 +122,25 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 11, fontWeight: '700', color: '#A0AEC0', textAlign: 'center', marginTop: 50, textTransform: 'uppercase', letterSpacing: 1 },
-  selectorContainer: { marginVertical: 15, paddingLeft: 20 },
-  profileTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F7FAFC', marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
-  profileTabActive: { backgroundColor: '#0047AB', borderColor: '#0047AB' },
-  profileTabText: { color: '#718096', fontWeight: '600', fontSize: 13 },
-  profileTabTextActive: { color: '#FFFFFF' },
-  profileHeader: { alignItems: 'center', paddingVertical: 20 },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0F4F8', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  avatarLabel: { fontSize: 32, color: '#0047AB', fontWeight: '300' },
-  name: { fontSize: 24, fontWeight: '700', color: '#1A202C' },
-  subtitle: { fontSize: 13, color: '#718096', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 },
-  infoBox: { marginHorizontal: 25, backgroundColor: '#F7FAFC', borderRadius: 12, padding: 20, marginTop: 10 },
-  label: { fontSize: 10, color: '#A0AEC0', fontWeight: '700', marginBottom: 4 },
-  value: { fontSize: 15, color: '#2D3748' },
-  spacer: { height: 15 },
-  shareButton: { margin: 25, backgroundColor: '#0047AB', paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
-  shareText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13, letterSpacing: 1 }
+  sectionHeader: { fontSize: 11, fontWeight: '700', color: '#94A3B8', textAlign: 'center', marginTop: 50, textTransform: 'uppercase', letterSpacing: 1.5 },
+  selectorWrapper: { marginVertical: 16, height: 44 },
+  pillButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 99, backgroundColor: '#F1F5F9', marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  pillButtonActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  pillText: { color: '#64748B', fontWeight: '600', fontSize: 13 },
+  pillTextActive: { color: '#FFFFFF' },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  profileSection: { alignItems: 'center', paddingVertical: 20 },
+  avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  avatarLetter: { fontSize: 36, color: '#0F172A', fontWeight: '300' },
+  fullname: { fontSize: 24, fontWeight: '700', color: '#0F172A' },
+  headline: { fontSize: 13, color: '#64748B', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 1, marginTop: 6 },
+  detailsCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  infoBlock: { paddingVertical: 2 },
+  detailLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  detailValue: { fontSize: 15, color: '#334155', fontWeight: '500' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  actionButton: { backgroundColor: '#0F172A', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
+  actionButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13, letterSpacing: 1 }
 });
