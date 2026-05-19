@@ -10,13 +10,16 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Servidor Local',
+        url: process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000',
+        description: 'Servidor ativo',
       },
     ],
   },
-  apis: ['./src/routes/*.js'], // Onde o Swagger vai buscar as anotações das rotas
+  apis: ['./src/routes/*.js'],
 };
 
 const specs = swaggerJsdoc(options);
+
 module.exports = specs;
