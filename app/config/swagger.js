@@ -13,7 +13,8 @@ const options = {
       },
     ],
   },
-  apis: ['./src/routes/*.js'], 
+  // Caminho atualizado para a nova pasta
+  apis: ['./app/routes/*.js'], 
 };
 
 const specs = swaggerJsdoc(options);
